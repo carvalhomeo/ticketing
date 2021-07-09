@@ -6,11 +6,14 @@ declare global {
   namespace NodeJS {
     interface Global {
       signin(id?: string): string[];
+      signout(): void;
     }
   }
 }
 
 jest.mock('../nats-wrapper');
+
+process.env.STRIPE_KEY = 'sk_test_51J9zAaLsykmQKFbMB3qa5asAyz5L2EiB6IDTNh9osF2QBNsKQ0zXHQCTNaPikTrsTmORvCLfdAMtLL2ZHfp15igr00Z9hjR9oS';
 
 let mongo: any;
 beforeAll(async () => {
@@ -40,6 +43,7 @@ afterAll(async () => {
   await mongoose.connection.close();
 });
 
+// @ts-ignore
 global.signin = (id?: string) => {
   // Build a JWT payload.  { id, email }
   const payload = {
