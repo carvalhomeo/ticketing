@@ -1,53 +1,52 @@
-
-import { natsWrapper } from "../../../nats-wrapper"
-import { OrderCancelledListener } from "../order-cancelled-listener";
-import mongoose from "mongoose";
-import { OrderCancelledEvent, OrderStatus } from "@meocarvalho/common";
-import { Order } from "../../../models/order";
+import mongoose from 'mongoose';
+import { Message } from 'node-nats-streaming';
+import { OrderStatus, OrderCancelledEvent } from '@meocarvalho/common';
+import { OrderCancelledListener } from '../order-cancelled-listener';
+import { natsWrapper } from '../../../nats-wrapper';
+import { Order } from '../../../models/order';
 
 const setup = async () => {
-    const listener = new OrderCancelledListener(natsWrapper.client);
+  const listener = new OrderCancelledListener(natsWrapper.client);
 
-    const order = Order.build({
-        id: mongoose.Types.ObjectId().toHexString(),
-        status: OrderStatus.Created,
-        price: 10,
-        userId: 'asdasd',
-        version: 0
-    });
+  const order = Order.build({
+    id: mongoose.Types.ObjectId().toHexString(),
+    status: OrderStatus.Created,
+    price: 10,
+    userId: 'asldkfj',
+    version: 0,
+  });
+  await order.save();
 
-    await order.save();
+  const data: OrderCancelledEvent['data'] = {
+    id: order.id,
+    version: 1,
+    ticket: {
+      id: 'asldkfj',
+    },
+  };
 
-    const data: OrderCancelledEvent['data'] = {
-        id: order.id,
-        version: 1,
-        ticket: {
-            id: 'asdasd'
-        }
-    }
+  // @ts-ignore
+  const msg: Message = {
+    ack: jest.fn(),
+  };
 
-    // @ts-ignore
-    const msg: Message = {
-        ack: jest.fn()
-    }
-
-    return { listener, data, msg, order };
-}
+  return { listener, data, msg, order };
+};
 
 it('updates the status of the order', async () => {
-    const { listener, data, msg, order } = await setup();
+  const { listener, data, msg, order } = await setup();
 
-    await listener.onMessage(data, msg);
+  await listener.onMessage(data, msg);
 
-    const updatedOrder = await Order.findById(order.id);
+  const updatedOrder = await Order.findById(order.id);
 
-    expect(updatedOrder!.status).toEqual(OrderStatus.Cancelled);
+  expect(updatedOrder!.status).toEqual(OrderStatus.Cancelled);
 });
 
 it('acks the message', async () => {
-    const { listener, data, msg } = await setup();
+  const { listener, data, msg, order } = await setup();
 
-    await listener.onMessage(data, msg);
+  await listener.onMessage(data, msg);
 
-    expect(msg.ack).toHaveBeenCalled();
+  expect(msg.ack).toHaveBeenCalled();
 });
